@@ -15,7 +15,11 @@ def index_view():
     form = HomeForm()
     if form.validate_on_submit():
         original_link = form.original_link.data
-        custom_id = form.custom_id.data.strip() if form.custom_id.data else None
+        custom_id = (
+            form.custom_id.data.strip()
+            if form.custom_id.data
+            else None
+        )
 
         if custom_id:
             existing = URLMap.query.filter_by(short=custom_id).first()
@@ -30,8 +34,12 @@ def index_view():
         try:
             db.session.add(url_map)
             db.session.commit()
-            short_link = url_for('redirect_view', short_id=short_id, _external=True)
-            return render_template('index.html', form=form, short_link=short_link)
+            short_link = url_for(
+                'redirect_view', short_id=short_id, _external=True
+            )
+            return render_template(
+                'index.html', form=form, short_link=short_link
+            )
         except Exception:
             db.session.rollback()
             if custom_id:
@@ -41,8 +49,12 @@ def index_view():
                 url_map = URLMap(original=original_link, short=short_id)
                 db.session.add(url_map)
                 db.session.commit()
-                short_link = url_for('redirect_view', short_id=short_id, _external=True)
-                return render_template('index.html', form=form, short_link=short_link)
+                short_link = url_for(
+                    'redirect_view', short_id=short_id, _external=True
+                )
+                return render_template(
+                    'index.html', form=form, short_link=short_link
+                )
 
     return render_template('index.html', form=form)
 
@@ -65,7 +77,9 @@ def files_view():
             except Exception as e:
                 flash(f'Ошибка при загрузке файлов: {str(e)}')
 
-    return render_template('files.html', form=form, uploaded_files=uploaded_files)
+    return render_template(
+        'files.html', form=form, uploaded_files=uploaded_files
+    )
 
 
 async def upload_files_to_disk(files):
@@ -93,10 +107,14 @@ async def upload_files_to_disk(files):
     for file_result in file_results:
         if 'download_link' in file_result:
             short_id = get_unique_short_id()
-            url_map = URLMap(original=file_result['download_link'], short=short_id)
+            url_map = URLMap(
+                original=file_result['download_link'], short=short_id
+            )
             db.session.add(url_map)
             db.session.commit()
-            short_link = url_for('redirect_view', short_id=short_id, _external=True)
+            short_link = url_for(
+                'redirect_view', short_id=short_id, _external=True
+            )
             uploaded_files.append({
                 'name': file_result['name'],
                 'short_link': short_link
@@ -106,7 +124,10 @@ async def upload_files_to_disk(files):
 
 
 async def upload_single_file(session, file, auth_headers):
-    """Загружает один файл на Яндекс Диск и возвращает download_link и filename."""
+    """Загружает один файл на Яндекс Диск.
+
+    Возвращает download_link и filename.
+    """
     try:
         filename = file.filename
         file_content = file.read()
@@ -115,9 +136,15 @@ async def upload_single_file(session, file, auth_headers):
         path = f'app:/{filename}'
         params = {'path': path, 'overwrite': 'True'}
 
-        async with session.get(REQUEST_UPLOAD_URL, headers=auth_headers, params=params) as resp:
+        async with session.get(
+            REQUEST_UPLOAD_URL, headers=auth_headers, params=params
+        ) as resp:
             if resp.status != 200:
-                return {'error': f'Ошибка получения URL для загрузки: {resp.status}'}
+                return {
+                    'error': (
+                        f'Ошибка получения URL для загрузки: {resp.status}'
+                    )
+                }
             upload_data = await resp.json()
             upload_url = upload_data['href']
 
@@ -133,11 +160,15 @@ async def upload_single_file(session, file, auth_headers):
                     location = location.replace('/disk', '', 1)
 
                 download_params = {'path': location}
-                async with session.get(DOWNLOAD_LINK_URL, headers=auth_headers, params=download_params) as download_resp:
+                async with session.get(
+                    DOWNLOAD_LINK_URL,
+                    headers=auth_headers,
+                    params=download_params
+                ) as download_resp:
                     if download_resp.status == 200:
                         download_data = await download_resp.json()
                         download_link = download_data['href']
-                        
+
                         return {
                             'name': filename,
                             'download_link': download_link
