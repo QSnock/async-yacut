@@ -15,9 +15,13 @@ def validate_custom_id(form, field):
     """
     if field.data:
         if not re.match(r'^[a-zA-Z0-9]+$', field.data):
-            raise ValidationError('Указано недопустимое имя для короткой ссылки')
+            raise ValidationError(
+                'Указано недопустимое имя для короткой ссылки'
+            )
         if len(field.data) > 16:
-            raise ValidationError('Указано недопустимое имя для короткой ссылки')
+            raise ValidationError(
+                'Указано недопустимое имя для короткой ссылки'
+            )
 
 
 class HomeForm(FlaskForm):

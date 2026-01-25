@@ -17,6 +17,13 @@ def validate_custom_id(custom_id):
     return True
 
 
+def _save_to_db(url, short_id):
+    """Сохраняет URLMap в базу данных."""
+    url_map = URLMap(original=url, short=short_id)
+    db.session.add(url_map)
+    db.session.commit()
+
+
 @app.route('/api/id/', methods=['POST'])
 def create_id():
     """Создание короткой ссылки через API."""
@@ -39,29 +46,30 @@ def create_id():
 
     if custom_id:
         if not validate_custom_id(custom_id):
-            return jsonify({'message': 'Указано недопустимое имя для короткой ссылки'}), 400
+            return jsonify(
+                {'message': 'Указано недопустимое имя для короткой ссылки'}
+            ), 400
 
         existing = URLMap.query.filter_by(short=custom_id).first()
         if existing:
-            return jsonify({'message': 'Предложенный вариант короткой ссылки уже существует.'}), 400
+            return jsonify(
+                {'message': 'Предложенный вариант короткой ссылки уже существует.'}
+            ), 400
 
         short_id = custom_id
     else:
         short_id = get_unique_short_id()
 
-    url_map = URLMap(original=url, short=short_id)
     try:
-        db.session.add(url_map)
-        db.session.commit()
+        _save_to_db(url, short_id)
     except Exception:
         db.session.rollback()
         if custom_id:
-            return jsonify({'message': 'Предложенный вариант короткой ссылки уже существует.'}), 400
-        else:
-            short_id = get_unique_short_id()
-            url_map = URLMap(original=url, short=short_id)
-            db.session.add(url_map)
-            db.session.commit()
+            return jsonify(
+                {'message': 'Предложенный вариант короткой ссылки уже существует.'}
+            ), 400
+        short_id = get_unique_short_id()
+        _save_to_db(url, short_id)
 
     short_link = url_for('redirect_view', short_id=short_id, _external=True)
     return jsonify({
