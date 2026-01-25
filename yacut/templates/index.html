@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-center"><span style="color:red">Ya</span>Cut</h1>
+<p class="text-center my-4">
+  Создайте короткую ссылку автоматически или предложите свой вариант
+</p>
+
+<div class="container">
+  <div class="row my-3">
+    <div class="col-sm"></div>
+    <div class="col-sm">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div>
+          <div>
+            {{ form.original_link(class="form-control form-control-lg py-2 mb-3", placeholder="Длинная ссылка") }}
+            {% if form.original_link.errors %}
+              {% for error in form.original_link.errors %}
+                <p><span style="color:red">{{ error }}</span></p>
+              {% endfor %}
+            {% endif %}
+          </div>
+          <div>
+            {{ form.custom_id(class="form-control form-control-lg py-2 mb-3", placeholder="Ваш вариант короткой ссылки") }}
+            {% if form.custom_id.errors %}
+              {% for error in form.custom_id.errors %}
+                <p><span style="color:red">{{ error }}</span></p>
+              {% endfor %}
+            {% endif %}
+          </div>
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+    <div class="col-sm"></div>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="container">
+      <div class="row">
+        <div class="col-sm"></div>
+        <div class="col-sm">
+          {% for message in messages %}
+            <p class="text-center"><span style="color:red">{{ message }}</span></p>
+          {% endfor %}
+        </div>
+        <div class="col-sm"></div>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% if short_link %}
+<div class="container">
+  <div class="row">
+    <div class="col-sm"></div>
+    <div class="col-sm">
+      <h5 class="text-center">
+        Ваша новая ссылка готова:
+        <a href="{{ short_link }}">{{ short_link }}</a>
+      </h5>
+    </div>
+    <div class="col-sm"></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
