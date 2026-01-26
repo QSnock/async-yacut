@@ -1,7 +1,11 @@
 import re
+from http import HTTPStatus
+
 from flask import jsonify, request, url_for
 
 from .app import app, db
+from .constants import MAX_SHORT_ID_LENGTH
+from .error_handlers import APIException
 from .models import URLMap
 from .utils import get_unique_short_id
 
@@ -10,7 +14,7 @@ def validate_custom_id(custom_id):
     """Проверяет, что custom_id содержит только латинские буквы и цифры."""
     if not custom_id:
         return True
-    if len(custom_id) > 16:
+    if len(custom_id) > MAX_SHORT_ID_LENGTH:
         return False
     if not re.match(r'^[a-zA-Z0-9]+$', custom_id):
         return False
@@ -27,17 +31,22 @@ def save_url_map(url, short_id):
 def validate_request():
     """Проверяет запрос и извлекает данные."""
     if not request.is_json:
-        return None, jsonify({'message': 'Отсутствует тело запроса'}), 400
+        raise APIException(
+            'Отсутствует тело запроса', HTTPStatus.BAD_REQUEST
+        )
 
     data = request.get_json(silent=True)
     if data is None:
-        return None, jsonify({'message': 'Отсутствует тело запроса'}), 400
+        raise APIException(
+            'Отсутствует тело запроса', HTTPStatus.BAD_REQUEST
+        )
 
     url = data.get('url')
     if not url:
-        return None, jsonify(
-            {'message': '"url" является обязательным полем!'}
-        ), 400
+        raise APIException(
+            '"url" является обязательным полем!',
+            HTTPStatus.BAD_REQUEST
+        )
 
     custom_id = data.get('custom_id')
     if custom_id:
@@ -45,55 +54,46 @@ def validate_request():
     if not custom_id:
         custom_id = None
 
-    return (url, custom_id), None, None
+    return url, custom_id
 
 
 def get_short_id(custom_id):
     """Получает short_id, проверяя custom_id если он указан."""
     if not custom_id:
-        return get_unique_short_id(), None, None
+        return get_unique_short_id()
 
     if not validate_custom_id(custom_id):
-        return None, jsonify(
-            {'message': 'Указано недопустимое имя для короткой ссылки'}
-        ), 400
+        raise APIException(
+            'Указано недопустимое имя для короткой ссылки',
+            HTTPStatus.BAD_REQUEST
+        )
 
     existing = URLMap.query.filter_by(short=custom_id).first()
     if existing:
-        return None, jsonify(
-            {
-                'message': 'Предложенный вариант короткой '
-                           'ссылки уже существует.'
-            }
-        ), 400
+        raise APIException(
+            'Предложенный вариант короткой ссылки уже существует.',
+            HTTPStatus.BAD_REQUEST
+        )
 
-    return custom_id, None, None
+    return custom_id
 
 
 @app.route('/api/id/', methods=['POST'])
 def create_id():
     """Создание короткой ссылки через API."""
-    request_data, error_response, error_code = validate_request()
-    if error_response:
-        return error_response, error_code
+    url, custom_id = validate_request()
 
-    url, custom_id = request_data
-
-    short_id, error_response, error_code = get_short_id(custom_id)
-    if error_response:
-        return error_response, error_code
+    short_id = get_short_id(custom_id)
 
     try:
         save_url_map(url, short_id)
     except Exception:
         db.session.rollback()
         if custom_id:
-            return jsonify(
-                {
-                    'message': 'Предложенный вариант короткой '
-                               'ссылки уже существует.'
-                }
-            ), 400
+            raise APIException(
+                'Предложенный вариант короткой ссылки уже существует.',
+                HTTPStatus.BAD_REQUEST
+            )
         short_id = get_unique_short_id()
         save_url_map(url, short_id)
 
@@ -101,7 +101,7 @@ def create_id():
     return jsonify({
         'url': url,
         'short_link': short_link
-    }), 201
+    }), HTTPStatus.CREATED
 
 
 @app.route('/api/id/<short_id>/', methods=['GET'])
@@ -109,6 +109,6 @@ def get_url(short_id):
     """Получение оригинальной ссылки по короткому идентификатору."""
     url_map = URLMap.query.filter_by(short=short_id).first()
     if not url_map:
-        return jsonify({'message': 'Указанный id не найден'}), 404
+        raise APIException('Указанный id не найден', HTTPStatus.NOT_FOUND)
 
-    return jsonify({'url': url_map.original}), 200
+    return jsonify({'url': url_map.original}), HTTPStatus.OK

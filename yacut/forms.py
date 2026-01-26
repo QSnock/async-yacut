@@ -7,6 +7,8 @@ from wtforms.validators import (
     DataRequired, Length, Optional, URL, ValidationError
 )
 
+from .constants import MAX_SHORT_ID_LENGTH
+
 
 def validate_custom_id(form, field):
     """Валидатор для проверки custom_id.
@@ -18,7 +20,7 @@ def validate_custom_id(form, field):
             raise ValidationError(
                 'Указано недопустимое имя для короткой ссылки'
             )
-        if len(field.data) > 16:
+        if len(field.data) > MAX_SHORT_ID_LENGTH:
             raise ValidationError(
                 'Указано недопустимое имя для короткой ссылки'
             )
@@ -36,7 +38,10 @@ class HomeForm(FlaskForm):
         'Ваш вариант короткой ссылки',
         validators=[
             Optional(),
-            Length(max=16, message='Максимальная длина 16 символов'),
+            Length(
+                max=MAX_SHORT_ID_LENGTH,
+                message=f'Максимальная длина {MAX_SHORT_ID_LENGTH} символов'
+            ),
             validate_custom_id
         ]
     )

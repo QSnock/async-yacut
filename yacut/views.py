@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 import urllib.parse
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, url_for
 
 from .models import URLMap
 from .app import app, db
@@ -31,30 +31,14 @@ def index_view():
             short_id = get_unique_short_id()
 
         url_map = URLMap(original=original_link, short=short_id)
-        try:
-            db.session.add(url_map)
-            db.session.commit()
-            short_link = url_for(
-                'redirect_view', short_id=short_id, _external=True
-            )
-            return render_template(
-                'index.html', form=form, short_link=short_link
-            )
-        except Exception:
-            db.session.rollback()
-            if custom_id:
-                flash('Предложенный вариант короткой ссылки уже существует.')
-            else:
-                short_id = get_unique_short_id()
-                url_map = URLMap(original=original_link, short=short_id)
-                db.session.add(url_map)
-                db.session.commit()
-                short_link = url_for(
-                    'redirect_view', short_id=short_id, _external=True
-                )
-                return render_template(
-                    'index.html', form=form, short_link=short_link
-                )
+        db.session.add(url_map)
+        db.session.commit()
+        short_link = url_for(
+            'redirect_view', short_id=short_id, _external=True
+        )
+        return render_template(
+            'index.html', form=form, short_link=short_link
+        )
 
     return render_template('index.html', form=form)
 
@@ -181,8 +165,5 @@ async def upload_single_file(session, file, auth_headers):
 
 @app.route('/<short_id>')
 def redirect_view(short_id):
-    url_map = URLMap.query.filter_by(short=short_id).first()
-    if url_map:
-        return redirect(url_map.original)
-    else:
-        abort(404)
+    url_map = URLMap.query.filter_by(short=short_id).first_or_404()
+    return redirect(url_map.original)
