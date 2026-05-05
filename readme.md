@@ -69,3 +69,13 @@ flask db upgrade
 ```
 flask run
 ```
+
+## 👨‍💻 Автор
+
+**Евгений Сульжицкий** - [GitHub](https://github.com/QSnock)
+
+### 🔗 Ссылки
+- [VK](https://vk.com/idholleyyt)
+- [YouTube](https://youtube.com/@QSnock)
+
+---
